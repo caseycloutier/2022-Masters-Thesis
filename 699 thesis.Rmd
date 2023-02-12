@@ -1,0 +1,131 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(dplyr)
+library(tidyverse) 
+library(AER)
+library(ivpack)
+library(plm) #import packages i needed 
+```
+
+
+
+```{r}
+mydata<-read.csv('//Users/caseycloutier/Desktop/ECO688/Cleaned Data/data.csv') #import data file
+
+mydata[is.na(mydata)] <- 0 #replaces NA values with 0
+```
+
+
+```{r}
+mydata[, "svcemp"] <- mydata[, "emplvl"] / mydata[, "Population"]
+```
+
+
+
+```{r}
+library(stargazer) #mport stargazer package
+
+sumstatsdata<- mydata[, c("svcemp", "share_all_closed_25", 'share_all_closed_50', 'share_all_closed_75','Completeness_pct','Q_GDP','trump_True','Percent_Female','Percent_Black','Percent_AmerInd','Percent_PacI','Percent_Asian','Percent_HisLat')] 
+#create summary statistics table of variables i am using 
+```
+```{r}
+stargazer(sumstatsdata, type="text", title="Summary Statistics", out="/Users/caseycloutier/Desktop/ECO688/Charts/sumstats.html")
+#save sum stats table to desired location
+```
+
+```{r}
+cortable <- cor(sumstatsdata)
+round(cortable, 2)
+
+stargazer(cortable, type="text", title="Cor Table", out="/Users/caseycloutier/Desktop/ECO688/Charts/cortable.html")
+```
+```{r}
+pols25<-plm(svcemp~ share_all_closed_25 , data=mydata, index = c("area_title", "date"), model = "pooling")
+
+pols25_cntrl<-plm(svcemp~ share_all_closed_25+log(Q_GDP)+Completeness_pct+trump_True + Percent_Female + Percent_Black +Percent_AmerInd +Percent_PacI+Percent_Asian+Percent_HisLat, data = mydata,index = c("area_title", "date"), model = "pooling" )
+
+pols25_fe<-plm(svcemp~ share_all_closed_25+log(Q_GDP)+Completeness_pct+trump_True + Percent_Female + Percent_Black +Percent_AmerInd +Percent_PacI+Percent_Asian+Percent_HisLat+factor(area_title)+factor(date), data = mydata,index = c("area_title", "date"),model = "within", effect = "twoways" )
+```
+
+
+```{r}
+pols50<-plm(svcemp~ share_all_closed_50 , data=mydata, index = c("area_title", "date"), model = "pooling")
+
+pols50_cntrl<-plm(svcemp~ share_all_closed_50+log(Q_GDP)+Completeness_pct+trump_True + Percent_Female + Percent_Black +Percent_AmerInd +Percent_PacI+Percent_Asian+Percent_HisLat, data = mydata,index = c("area_title", "date"), model = "pooling" )
+
+pols50_fe<-plm(svcemp~ share_all_closed_50+log(Q_GDP)+Completeness_pct+trump_True + Percent_Female + Percent_Black +Percent_AmerInd +Percent_PacI+Percent_Asian+Percent_HisLat+factor(area_title)+factor(date), data = mydata,index = c("area_title", "date"),model = "within", effect = "twoways" )
+```
+
+
+```{r}
+pols75<-plm(svcemp~ share_all_closed_75 , data=mydata, index = c("area_title", "date"), model = "pooling")
+
+pols75_cntrl<-plm(svcemp~ share_all_closed_75+log(Q_GDP)+Completeness_pct+trump_True + Percent_Female + Percent_Black +Percent_AmerInd +Percent_PacI+Percent_Asian+Percent_HisLat, data = mydata,index = c("area_title", "date"), model = "pooling" )
+
+pols75_fe<-plm(svcemp~ share_all_closed_75+log(Q_GDP)+Completeness_pct+trump_True + Percent_Female + Percent_Black +Percent_AmerInd +Percent_PacI+Percent_Asian+Percent_HisLat+factor(area_title)+factor(date), data = mydata,index = c("area_title", "date"),model = "within", effect = "twoways" )
+```
+
+
+```{r}
+G <- length(unique(mydata$area_title))
+N <- length(mydata$area_title) 
+dfa25 <- (G/(G - 1)) * (N - 1)/pols25$df.residual
+dfa25cntrl<-(G/(G - 1)) * (N - 1)/pols25_cntrl$df.residual
+dfa25fe<-(G/(G - 1)) * (N - 1)/pols25_fe$df.residual
+#adjusting degrees of freedom for clustered robust standard errors 
+
+cluster_se25 <- dfa25 * vcovHC(pols25, type = "HC0", cluster = "group", adjust = T)
+cluster_se_cntrl25<-dfa25cntrl * vcovHC(pols25_cntrl, type = "HC0", cluster = "group", adjust = T)
+cluster_se_fe25<-dfa25fe * vcovHC(pols25_fe, type = "HC0", cluster = "group", adjust = T)
+#creating the clustered robust standard errors
+
+stargazer(pols25,pols25_cntrl, pols25_fe, type = "html",se = list(cluster_se25,cluster_se_cntrl25,cluster_se_fe25), out="/Users/caseycloutier/Desktop/ECO688/Charts/pols25.html")
+#put regression output with clustered standard errors into stargazer 
+```
+```{r}
+G <- length(unique(mydata$area_title))
+N <- length(mydata$area_title) 
+dfa50 <- (G/(G - 1)) * (N - 1)/pols50$df.residual
+dfa50cntrl<-(G/(G - 1)) * (N - 1)/pols50_cntrl$df.residual
+dfa50fe<-(G/(G - 1)) * (N - 1)/pols50_fe$df.residual
+#adjusting degrees of freedom for clustered robust standard errors 
+
+cluster_se50 <- dfa50 * vcovHC(pols50, type = "HC0", cluster = "group", adjust = T)
+cluster_se_cntrl50<-dfa50cntrl * vcovHC(pols50_cntrl, type = "HC0", cluster = "group", adjust = T)
+cluster_se_fe50<-dfa50fe * vcovHC(pols50_fe, type = "HC0", cluster = "group", adjust = T)
+#creating the clustered robust standard errors
+
+stargazer(pols50,pols50_cntrl, pols50_fe, type = "html",se = list(cluster_se50,cluster_se_cntrl50,cluster_se_fe50), out="/Users/caseycloutier/Desktop/ECO688/Charts/pols50.html")
+#put regression output with clustered standard errors into stargazer 
+```
+```{r}
+G <- length(unique(mydata$area_title))
+N <- length(mydata$area_title) 
+dfa75 <- (G/(G - 1)) * (N - 1)/pols75$df.residual
+dfa75cntrl<-(G/(G - 1)) * (N - 1)/pols75_cntrl$df.residual
+dfa75fe<-(G/(G - 1)) * (N - 1)/pols75_fe$df.residual
+#adjusting degrees of freedom for clustered robust standard errors 
+
+cluster_se75 <- dfa75 * vcovHC(pols75, type = "HC0", cluster = "group", adjust = T)
+cluster_se_cntrl75<-dfa75cntrl * vcovHC(pols75_cntrl, type = "HC0", cluster = "group", adjust = T)
+cluster_se_fe75<-dfa75fe * vcovHC(pols75_fe, type = "HC0", cluster = "group", adjust = T)
+#creating the clustered robust standard errors
+
+stargazer(pols75,pols75_cntrl, pols75_fe, type = "html",se = list(cluster_se75,cluster_se_cntrl75,cluster_se_fe75), out="/Users/caseycloutier/Desktop/ECO688/Charts/pols75.html")
+#put regression output with clustered standard errors into stargazer 
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
